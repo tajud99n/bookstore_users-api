@@ -2,25 +2,17 @@ package users
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/tajud99n/bookstore_users-api/database/mysql/users"
 	"github.com/tajud99n/bookstore_users-api/utils/date"
 	"github.com/tajud99n/bookstore_users-api/utils/errors"
+	mysqlUtils "github.com/tajud99n/bookstore_users-api/utils/mysql"
 )
 
 const (
-	indexUniqueEmail = "email_UNIQUE"
-	queryInsertUser  = "INSERT INTO users(firstname, lastname, email, date_created) VALUES(?, ?, ?, ?);"
+	queryInsertUser = "INSERT INTO users(firstname, lastname, email, date_created) VALUES(?, ?, ?, ?);"
+	queryGetUser    = "SELECT id, firstname, lastname, email, date_created FROM users WHERE id=?;"
 )
-
-func (user *User) Get() *errors.RestErr {
-	if err := users.Client.Ping(); err != nil {
-		panic(err)
-	}
-
-	return nil
-}
 
 func (user *User) Save() *errors.RestErr {
 	stmt, err := users.Client.Prepare(queryInsertUser)
@@ -30,17 +22,32 @@ func (user *User) Save() *errors.RestErr {
 	defer stmt.Close()
 	user.DateCreated = date.GetNowString()
 
-	insertResult, err := stmt.Exec(user.FirstName, user.LastName, user.Email, user.DateCreated)
-	if err != nil {
-		if strings.Contains(err.Error(), indexUniqueEmail) {
-			return errors.NewBadRequestError(fmt.Sprintf("email %s already exists", user.Email))
-		}
-		return errors.NewInternalServerError(fmt.Sprintf("error when trying to save user: %s", err.Error()))
+	insertResult, saveErr := stmt.Exec(user.FirstName, user.LastName, user.Email, user.DateCreated)
+	if saveErr != nil {
+		return mysqlUtils.ParseError(saveErr)
 	}
+
 	userId, err := insertResult.LastInsertId()
 	if err != nil {
-		return errors.NewInternalServerError(fmt.Sprintf("error when trying to save user: %s", err.Error()))
+		return mysqlUtils.ParseError(saveErr)
 	}
 	user.Id = userId
+	return nil
+}
+
+func (user *User) Get() *errors.RestErr {
+	stmt, err := users.Client.Prepare(queryGetUser)
+	if err != nil {
+		return errors.NewInternalServerError(err.Error())
+	}
+	defer stmt.Close()
+
+	result := stmt.QueryRow(user.Id)
+
+	if getErr := result.Scan(&user.Id, &user.FirstName, &user.LastName, &user.Email, &user.DateCreated); getErr != nil {
+		fmt.Println(getErr)
+		return mysqlUtils.ParseError(getErr)
+	}
+
 	return nil
 }
