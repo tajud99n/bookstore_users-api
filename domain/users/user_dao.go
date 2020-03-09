@@ -1,8 +1,6 @@
 package users
 
 import (
-	"fmt"
-
 	"github.com/tajud99n/bookstore_users-api/database/mysql/users"
 	"github.com/tajud99n/bookstore_users-api/utils/date"
 	"github.com/tajud99n/bookstore_users-api/utils/errors"
@@ -12,6 +10,7 @@ import (
 const (
 	queryInsertUser = "INSERT INTO users(firstname, lastname, email, date_created) VALUES(?, ?, ?, ?);"
 	queryGetUser    = "SELECT id, firstname, lastname, email, date_created FROM users WHERE id=?;"
+	queryUpdateUser = "UPDATE users SET firstname=?, lastname=?, email=? WHERE id=?;"
 )
 
 func (user *User) Save() *errors.RestErr {
@@ -45,9 +44,22 @@ func (user *User) Get() *errors.RestErr {
 	result := stmt.QueryRow(user.Id)
 
 	if getErr := result.Scan(&user.Id, &user.FirstName, &user.LastName, &user.Email, &user.DateCreated); getErr != nil {
-		fmt.Println(getErr)
 		return mysqlUtils.ParseError(getErr)
 	}
 
+	return nil
+}
+
+func (user *User) Update() *errors.RestErr {
+	stmt, err := users.Client.Prepare(queryUpdateUser)
+	if err != nil {
+		return errors.NewInternalServerError(err.Error())
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(user.FirstName, user.LastName, user.Email, user.Id)
+	if err != nil {
+		return mysqlUtils.ParseError(err)
+	}
 	return nil
 }
