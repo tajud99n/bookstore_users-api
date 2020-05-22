@@ -7,7 +7,7 @@ import (
 	mysqlUtils "github.com/tajud99n/bookstore_users-api/utils/mysql"
 
 	"github.com/tajud99n/bookstore_users-api/database/mysql/users"
-	"github.com/tajud99n/bookstore_users-api/logger"
+	"github.com/tajud99n/bookstore_utils-go/logger"
 	"github.com/tajud99n/bookstore_users-api/utils/errors"
 )
 
